@@ -1,0 +1,57 @@
+.matching-form {
+  margin-top: 20px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--color-text-base);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.time-inputs,
+.salary-inputs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.time-inputs input,
+.salary-inputs input {
+  flex: 1;
+}
+
+.preview-result {
+  margin-top: 20px;
+  padding: 16px;
+  background: var(--color-bg-surface);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 30px;
+  flex-wrap: wrap;
+}
+
+.note {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin: 4px 0;
+}
