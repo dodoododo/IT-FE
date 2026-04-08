@@ -27,7 +27,7 @@ function SectionTitle({ index, title, subtitle }) {
   );
 }
 
-function App() {
+function HomePage() {
   return (
     <div className="app-shell">
       <div className="ambient ambient-left" />
@@ -287,4 +287,4 @@ function App() {
   );
 }
 
-export default App;
+export default HomePage;
