@@ -181,9 +181,6 @@ function Dangtintuyendung() {
           </section>
 
           <div className="action-row" aria-label="Hành động cuối trang">
-            <button className="btn btn-muted" type="button">
-              Lưu nháp
-            </button>
             <button className="btn btn-primary" type="button">
               Xem trước
             </button>
