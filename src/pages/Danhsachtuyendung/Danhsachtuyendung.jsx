@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { recruitmentPosts } from '../../data';
 import { fetchJobPosts } from '../../services/api';
 import './Danhsachtuyendung.css';
@@ -35,65 +36,29 @@ function filterLocalPosts(posts, keyword, location) {
 }
 
 function Danhsachtuyendung() {
+  const routerLocation = useLocation();
+  const incomingJobs = Array.isArray(routerLocation.state?.jobs) ? routerLocation.state.jobs : null;
+  const sourcePosts = incomingJobs !== null ? incomingJobs : recruitmentPosts;
+
   const [keyword, setKeyword] = useState('');
-  const [location, setLocation] = useState('Tất cả');
-  const [posts, setPosts] = useState(recruitmentPosts);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [knownLocations, setKnownLocations] = useState(
-    Array.from(new Set(recruitmentPosts.map((post) => post.location))),
-  );
+  const [selectedLocation, setSelectedLocation] = useState('Tất cả');
 
   const locations = useMemo(() => {
-    return ['Tất cả', ...knownLocations];
-  }, [knownLocations]);
+    const uniqueLocations = Array.from(
+      new Set(sourcePosts.map((post) => post.location).filter(Boolean)),
+    );
+    return ['Tất cả', ...uniqueLocations];
+  }, [sourcePosts]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      setIsLoading(true);
-      setErrorMessage('');
+  const filteredPosts = useMemo(() => {
+    const normalizedKeyword = keyword.trim().toLowerCase();
 
-      try {
-        const payload = await fetchJobPosts({
-          keyword,
-          location,
-          page: 1,
-          limit: 20,
-          signal: controller.signal,
-        });
-
-        if (controller.signal.aborted) {
-          return;
-        }
-
-        setPosts(payload.results);
-        if (payload.results.length > 0) {
-          setKnownLocations((previousLocations) => {
-            const merged = new Set(previousLocations);
-            payload.results.forEach((item) => merged.add(item.location));
-            return Array.from(merged);
-          });
-        }
-      } catch (error) {
-        if (error.name === 'AbortError') {
-          return;
-        }
-
-        setPosts(filterLocalPosts(recruitmentPosts, keyword, location));
-        setErrorMessage('Không thể kết nối API. Đang hiển thị dữ liệu tạm.');
-      } finally {
-        if (!controller.signal.aborted) {
-          setIsLoading(false);
-        }
-      }
-    }, 300);
-
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [keyword, location]);
+    return sourcePosts.filter((post) => {
+      const matchTitle = String(post.title || '').toLowerCase().includes(normalizedKeyword);
+      const matchLocation = selectedLocation === 'Tất cả' || post.location === selectedLocation;
+      return matchTitle && matchLocation;
+    });
+  }, [keyword, selectedLocation, sourcePosts]);
 
   return (
     <section className="recruitment-page">
@@ -118,8 +83,8 @@ function Danhsachtuyendung() {
               <LocationIcon />
               <select
                 className="recruitment-location-filter"
-                value={location}
-                onChange={(event) => setLocation(event.target.value)}
+                value={selectedLocation}
+                onChange={(event) => setSelectedLocation(event.target.value)}
               >
                 {locations.map((locationOption) => (
                   <option key={locationOption} value={locationOption}>

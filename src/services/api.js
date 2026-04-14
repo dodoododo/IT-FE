@@ -1,79 +1,69 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').trim();
+const DEFAULT_API_BASE_URL = '';
 
-class ApiError extends Error {
-  constructor(message, status, details = null) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-    this.details = details;
-  }
+function normalizeBaseUrl(baseUrl) {
+  const normalizedBaseUrl = baseUrl === undefined || baseUrl === null ? DEFAULT_API_BASE_URL : baseUrl;
+  return String(normalizedBaseUrl).replace(/\/$/, '');
 }
 
-function buildJobsUrl(params = {}) {
-  const endpoint = API_BASE_URL
-    ? new URL('/api/jobs/posts/', API_BASE_URL)
-    : new URL('/api/jobs/posts/', window.location.origin);
+function buildQueryString(params = {}) {
   const searchParams = new URLSearchParams();
 
-  if (params.keyword) {
-    searchParams.set('q', params.keyword.trim());
-  }
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null) {
+      return;
+    }
 
-  if (params.location && params.location !== 'Tất cả') {
-    searchParams.set('dia_diem', params.location.trim());
-  }
+    const normalizedValue = String(value).trim();
+    if (normalizedValue) {
+      searchParams.set(key, normalizedValue);
+    }
+  });
 
-  searchParams.set('page', String(params.page || 1));
-  searchParams.set('limit', String(params.limit || 20));
-
-  endpoint.search = searchParams.toString();
-  return endpoint.toString();
+  const queryString = searchParams.toString();
+  return queryString ? `?${queryString}` : '';
 }
 
-function normalizeJobPost(item) {
-  return {
-    id: item.tin_id ?? item.id,
-    title: item.title || item.tieu_de || 'Chưa có tiêu đề',
-    summary: item.summary || item.description || item.noi_dung || '',
-    openings: item.openings || 1,
-    location: item.location || item.dia_diem_lam_viec || 'Chưa cập nhật',
-    status: item.status || item.trang_thai || '',
-  };
-}
+async function request(path, options = {}) {
+  const apiBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL);
+  const requestUrl = apiBaseUrl ? `${apiBaseUrl}${path}` : path;
+  const response = await fetch(requestUrl, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+  });
 
-export async function fetchJobPosts(params = {}) {
-  let response;
-  try {
-    response = await fetch(buildJobsUrl(params), {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-      },
-      signal: params.signal,
-    });
-  } catch (_networkError) {
-    throw new ApiError('Không thể kết nối tới API backend', 0, null);
-  }
-
-  let payload = null;
-  try {
-    payload = await response.json();
-  } catch (_error) {
-    payload = null;
-  }
+  const contentType = response.headers.get('content-type') || '';
+  const payload = contentType.includes('application/json') ? await response.json() : await response.text();
 
   if (!response.ok) {
-    const message = payload?.detail || payload?.message || 'Không thể tải dữ liệu tuyển dụng';
-    throw new ApiError(message, response.status, payload);
+    const errorMessage =
+      typeof payload === 'object' && payload !== null
+        ? payload.detail || payload.message || 'Yêu cầu không thành công.'
+        : 'Yêu cầu không thành công.';
+    const error = new Error(errorMessage);
+    error.status = response.status;
+    error.payload = payload;
+    throw error;
   }
 
-  const rawItems = Array.isArray(payload?.results) ? payload.results : [];
-  return {
-    page: payload?.page || 1,
-    limit: payload?.limit || rawItems.length,
-    total: payload?.total || rawItems.length,
-    results: rawItems.map(normalizeJobPost),
-  };
+  return payload;
 }
 
-export { ApiError };
+export async function fetchJobPosts(filters = {}) {
+  const queryString = buildQueryString(filters);
+  const payload = await request(`/api/jobs/posts/${queryString}`);
+
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (Array.isArray(payload?.results)) {
+    return payload.results;
+  }
+
+  return [];
+}
+
+export { buildQueryString, request };
