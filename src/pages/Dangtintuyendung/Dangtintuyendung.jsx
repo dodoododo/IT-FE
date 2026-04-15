@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createJobPost } from '../../services/api';
 import { ROUTES } from '../../constants/routes';
 import styles from './Dangtintuyendung.module.css';
 
@@ -80,6 +81,9 @@ function Dangtintuyendung() {
   const [skills, setSkills] = useState(initialDraft.skills);
   const [workTime, setWorkTime] = useState(initialDraft.workTime);
   const [workTimeError, setWorkTimeError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [submitSuccess, setSubmitSuccess] = useState('');
   const workTimeInputRef = useRef(null);
 
   const workTimePattern = /^(?:[01]\d|2[0-3]):[0-5]\d\s-\s(?:[01]\d|2[0-3]):[0-5]\d$/;
@@ -178,17 +182,41 @@ function Dangtintuyendung() {
     });
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
+    const workTimeValue = workTime.trim();
+    if (!workTimePattern.test(workTimeValue)) {
+      setWorkTimeError('Vui lòng nhập đúng mẫu HH:MM - HH:MM.');
+      workTimeInputRef.current?.focus();
+      return;
+    }
+
     const recruitmentData = collectRecruitmentData();
     if (!recruitmentData) {
       return;
     }
 
-    navigate(ROUTES.JOB_DETAIL, {
-      state: {
-        recruitmentData,
-      },
-    });
+    setSubmitError('');
+    setSubmitSuccess('');
+    setIsSubmitting(true);
+
+    try {
+      const response = await createJobPost({
+        ...recruitmentData,
+        status: 'Đăng',
+        workTime: workTimeValue,
+      });
+
+      setSubmitSuccess('Tin tuyển dụng đã được gửi thành công.');
+      navigate(ROUTES.RECRUITMENT_LIST, {
+        state: {
+          createdJob: response,
+        },
+      });
+    } catch (error) {
+      setSubmitError(error.message || 'Không thể đăng tin tuyển dụng. Vui lòng thử lại.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCancel = () => {
